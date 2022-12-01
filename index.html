@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+
+    <title>GoogleBooksAPI</title>
+</head>
+<body>
+    <div id="top">
+        <h1>わたしの本棚</h1>
+        <div>
+            <input type="text" id="key">
+            <button id="send">検索</button>
+        </div>
+
+        <div id="bookshelf"></div>
+    </div>
+
+    <div id="search">
+
+        <div id="booklist">
+            <table id="list">
+                <tr>
+                    <td style="width:400px">書籍名</td>
+                    <td style="width:200px">出版社</td>
+                    <td style="width:100px">ページ数</td>
+                    <td style="width:400px">画像</td>
+                </tr>
+            </table>
+        </div>
+
+            <!-- MapArea -->
+        <div class="mapsection">
+            <div id="myMap"></div>
+            <div class="shop">
+                <button id="ebetsu">江別 蔦屋書店</button>
+                <button id="hakodate">函館 蔦屋書店</button>
+            </div>
+            <!-- /MapArea -->
+        </div>
+
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script type="module">
+
+      // ここからfirebase
+
+      // Import the functions you need from the SDKs you need
+
+    //   //ライブラリの中のinitializeAppという関数を使えるようにする。これはデフォルト
+    //     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.14.0/firebase-app.js";
+
+    //   // 貼り付ける場所
+    //   import { getDatabase, ref, push, set, child, get, update, onChildAdded, remove,onChildRemoved, serverTimestamp, onValue, query, orderByChild, } 
+    //   from "https://www.gstatic.com/firebasejs/9.14.0/firebase-database.js";
+    //   // TODO: Add SDKs for Firebase products that you want to use
+    //   // https://firebase.google.com/docs/web/setup#available-libraries
+
+      // Your web app's Firebase configuration
+        // const firebaseConfig = {
+        // API KEY
+    // };
+
+
+      // Initialize Firebase
+    //   const app = initializeApp(firebaseConfig); //firebaseConfigの変数でアクセスするよ
+    //   const db = getDatabase(app); //RealtimeDatabaseを使うよ
+    //   const dbRef = ref(db, "api-test"); //RealtimeDatabaseのtestという階層にデータを入れるよ
+
+
+      // ここまでfirebase
+
+    //検索ボタンをクリックしたら検索結果を表示
+    $("#send").on("click",function(){
+
+        const url = "https://www.googleapis.com/books/v1/volumes?q="+$("#key").val(); 
+        $.ajax({
+            url: url,
+            dataType: "json"
+        }).done(function(data) {
+            //書籍名、出版社、サムネイル[リンク]
+            console.log(data);             //オブジェクトの中を確認
+            const len = data.items.length; //データの数を取得
+            let html;
+            let thumbnail;
+            for(let i=0; i<len; i++){
+                console.log(typeof data.items[i].volumeInfo.publisher);
+                if(typeof data.items[i].volumeInfo.publisher=="undefined"){
+                    data.items[i].volumeInfo.publisher="出版社（不明）";
+                }
+                html += `
+                    <tr>
+                        <td>${data.items[i].volumeInfo.title}</td>
+                        <td>${data.items[i].volumeInfo.publisher}</td>
+                        <td>${data.items[i].volumeInfo.pageCount}</td>
+
+                        <td>
+                            <a target="_blank" href="${data.items[i].volumeInfo.infoLink}">
+                                <img src="${data.items[i].volumeInfo.imageLinks.thumbnail}">
+                            </a>
+                        </td>
+                        <td>
+                          <button class="btn">保存</button>
+                        </td>
+                    </tr>
+                `;
+
+            }
+            $("#list").append(html);
+
+            //検索結果で保存ボタンを押して希望の本のサムネイルを保存
+              $(document).on("click", ".btn", function (data) {
+              console.log(data)
+              var thumbnail = '<img class="booksize" src="img/laravel.jpeg">';
+              // var thumbnail = '<img class="booksize" src="${data.items[i].volumeInfo.imageLinks.thumbnail}">';
+              $("#bookshelf").append(thumbnail);
+              });
+        }); //消さない
+    });//消さない
+
+
+                //保存した本のlinkとthumbnailをfirebase realtime databaseに保存
+            //  const booklink = data.items[i].volumeInfo.infoLinks;
+            //  const bookthumbnail = data.items[i].volumeInfo.imageLinks.thumbnail;
+
+            //  const bookinfo = {
+            //  booklink : booklink,
+            //  bookthumbnail : bookthumbnail
+            //  };  
+
+            //  const newPostRef = push(dbRef);
+            //  set(newPostRef, bookinfo);
+    //     });
+    // };
+
+    </script>
+
+
+<!-- Bing Map -->
+
+<!-- <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script> -->
+<script src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap&key=' async
+    defer></script>
+  <script src="js/BmapQuery.js"></script>
+  <script>
+
+    let map;
+    //最初に実行する関数
+    function GetMap() {
+      const map = new Microsoft.Maps.Map('#myMap', {
+        center: new Microsoft.Maps.Location(43.07211, 141.36052),
+        mapTypeId: Microsoft.Maps.MapTypeId.load,
+        zoom: 16
+      })
+
+      let center = map.getCenter();
+      let pin = new Microsoft.Maps.Pushpin(center, {
+        color:'red',
+        draggable: false,
+        enableClickedStyle: false,
+        enableHoverStyle: true,
+        visible: true
+      });
+
+      map.entities.push(pin);
+      // navigator.geolocation.getCurrentPosition(mapsInit, mapsError, set);
+
+
+      //ツタヤ江別の場所を表示
+      document.getElementById("ebetsu").onclick = function() {
+        map.setView ({
+          mapTypeId: Microsoft.Maps.MapTypeId.load,
+          center: new Microsoft.Maps.Location(43.11506, 141.53960),
+          zoom: 16
+        });
+      }
+
+
+      //ツタヤ函館の場所を表示
+      document.getElementById("hakodate").onclick = function() {
+        map.setView ({
+          mapTypeId: Microsoft.Maps.MapTypeId.load,
+          center: new Microsoft.Maps.Location(41.83082, 140.73564),
+          zoom: 16
+        });
+      }
+    }
+
+  </script>
+
+</body>
+</html>
